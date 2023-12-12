@@ -18,6 +18,7 @@
 ## C#
 obj/
 bin/
+*.dll
 
 ## Python
 .venv/
