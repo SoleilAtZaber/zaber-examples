@@ -53,6 +53,11 @@ with Connection.open_serial_port("COM4") as connection:
     print("Synchronized move to start position")
     plate.move_absolute(Measurement(50, 'mm'), Measurement(50, 'mm'))
 
+    print("Turn on illuminator channel at 50%")
+    white_LED=Nucleus.illuminator.get_channel(2)
+    white_LED.set_intensity(0.5)
+    white_LED.on()
+
     print("Focus move")
     Nucleus.focus_axis.move_relative(100,"um")
 
@@ -76,3 +81,4 @@ with Connection.open_serial_port("COM4") as connection:
 
     print("change objectives with an offset")
     objective_changer.change(3, focus_offset=Measurement(OBJECTIVES[3]['offset_um'], unit="um"))
+    white_LED.off()
