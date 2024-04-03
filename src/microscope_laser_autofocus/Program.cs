@@ -79,12 +79,7 @@ namespace MicroscopeLaserAF
                 TestAFSpeed(curObjective);
 
                 Console.WriteLine("Autofocusing, press any key to quit");
-                var cts = new CancellationTokenSource();
-                ContinuousAf(cts.Token, curObjective); // Start continous AF for a few seconds then cancel it
-                // !!!
-                // Wait for user to quit
-                Console.ReadKey();
-                cts.Cancel();
+                ContinuousAf(curObjective);
 
                 // Cleanup
                 ATF.ATF_CloseConnection();
@@ -106,29 +101,25 @@ namespace MicroscopeLaserAF
             return false;
         }
 
-        public async Task<int> ContinuousAf(CancellationToken cancellationToken, Objective obj, float maxLimit = 21, float minLimit = 15)
+        public void ContinuousAf(Objective obj, float maxLimit = 21, float minLimit = 15)
         {
-            double currentPos = FocusAxis.GetPosition(Units.Length_Micrometres);
+            // double currentPos = FocusAxis.GetPosition(Units.Length_Micrometres);
             ATF.ATF_Make0();
             ATF.ATF_LaserTrackOn();
 
-            float fpos = 0;
             int iter = 0;
-            int ecode = 0;
             var watch = new Stopwatch();
             while (true)
             {
                 // var encoderPos = FocusAxis.Settings.Get(SettingConstants.EncoderPos, unit: Units.Length_Micrometres);
-                ecode = ATF.ATF_ReadPosition(out fpos);
-
-
+                var ecode = ATF.ATF_ReadPosition(out _);
                 if (ecode == 0)
                 {
-                    if (Math.Abs(fpos) > obj.InFocusRange)
+                    if (Math.Abs((float)0) > obj.InFocusRange)
                     {
                         // Start the focus move if greater than infocus range.
-                        Console.WriteLine(-fpos * obj.SlopeInMicrometers);
-                        FocusAxis.MoveRelative(-fpos * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
+                        Console.WriteLine(-(float)0 * obj.SlopeInMicrometers);
+                        FocusAxis.MoveRelative(-(float)0 * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
                         Thread.Sleep(10);
                     }
                 }
@@ -137,9 +128,14 @@ namespace MicroscopeLaserAF
                 if (iter % 1000 == 0)
                 {
                     watch.Stop();
-                    // Check for cancellation token every few iterations
+                    // Check for user cancel every few iterations
                     Console.WriteLine($"Focus update rate: {1000 / watch.Elapsed.TotalSeconds} Hz");
-                    cancellationToken.ThrowIfCancellationRequested();
+                    if (Console.KeyAvailable)
+                    {
+                        Console.ReadKey();
+                        break;
+                    }
+
                     watch.Reset();
                     watch.Start();
                 }
