@@ -6,7 +6,7 @@
 
 FIXME: Talk about the hardware setup here.
 
-## Spinnaker SDK
+## Wise Device SDK
 
 FIXME: Since the ATF SDK is behind an identity wall and the documentation says nothing about its
 license, we probably can't include their DLLs in the example. Describe here how to get acccess
