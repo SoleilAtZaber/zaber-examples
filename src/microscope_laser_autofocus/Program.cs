@@ -1,9 +1,9 @@
 using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Threading;
 
 using WDI;
+
 using Zaber.Motion;
 using Zaber.Motion.Ascii;
 using Zaber.Motion.Microscopy;
@@ -13,15 +13,6 @@ namespace MicroscopeLaserAF
 {
     internal class Program
     {
-        public Axis FocusAxis { get; set; }
-        public Axis XAxis { get; set; }
-
-
-        public float ConversionToMicrometers { get; set; }
-
-        public ObjectiveChanger MOR { get; set; }
-
-
         static void Main()
         {
             Program test = new Program();
@@ -37,10 +28,11 @@ namespace MicroscopeLaserAF
 
                 var deviceList = connection.DetectDevices();
                 Device LDA = deviceList[1];
-                FocusAxis = LDA.GetAxis(1);
+                _focusAxis = LDA.GetAxis(1);
+                // FIXME: Lots of commented-out code in this file; delete it or if users are supposed to uncomment it, document when.
                 // var stage = deviceList[4];
-                // XAxis = stage.GetAxis(1);
-                // MOR = ObjectiveChanger.Find(connection);
+                // _xAxis = stage.GetAxis(1);
+                // _objectiveChanger = ObjectiveChanger.Find(connection);
 
                 int ecode;
 
@@ -51,9 +43,9 @@ namespace MicroscopeLaserAF
 
 
                 // Move to default focus
-                if (!FocusAxis.IsHomed())
+                if (!_focusAxis.IsHomed())
                 {
-                    FocusAxis.Home();
+                    _focusAxis.Home();
                 }
 
                 // Setup Laser AF
@@ -64,15 +56,16 @@ namespace MicroscopeLaserAF
                 trigger.OnFireSetToSetting(TriggerAction.A, 0, "user.vdata.0", TriggerOperation.SetTo, 1, "encoder.pos");
                 trigger.OnFire(TriggerAction.B, 0, "stop");
                 trigger.FireWhenIo(IoPortType.DigitalInput, 1, TriggerCondition.EQ, 1);
+                // FIXME: Document when users should uncomment this line.
                 // TestRefreshRate(); // See how fast the sensor can be updated
                 ChangeObjectives(1, ref curObjective);
 
                 // Set the focus point for the currentObjective
-                curObjective.MeasureFocus(FocusAxis);
+                curObjective.MeasureFocus(_focusAxis);
 
-                Console.WriteLine(string.Format("True focus pos: {0}", FocusAxis.GetPosition(Units.Length_Micrometres)));
+                Console.WriteLine(string.Format("True focus pos: {0}", _focusAxis.GetPosition(Units.Length_Micrometres)));
 
-
+                // FIXME: Document when users should uncomment this line.
                 // curObjective.ObjectivePairing(FocusAxis);
 
                 Console.WriteLine("Testing high speed AF");
@@ -86,24 +79,24 @@ namespace MicroscopeLaserAF
             }
         }
 
-        public bool ChangeObjectives(int obj, ref Objective current)
+        public bool ChangeObjectives(int objectiveNumber, ref Objective current)
         {
-            Console.WriteLine("Manually change to:" + obj);
+            Console.WriteLine("Manually change to:" + objectiveNumber);
             Console.ReadKey();
-            // MOR.Change(obj);
+            // _objectiveChanger.Change(obj);
 
-            if (ATF.ATF_WriteObjNum(obj) == 0)
+            if (ATF.ATF_WriteObjNum(objectiveNumber) == 0)
             {
-                current.SetAll(obj);
+                current.SetAll(objectiveNumber);
                 return true;
             }
 
             return false;
         }
 
-        public void ContinuousAf(Objective obj, float maxLimit = 21, float minLimit = 15)
+        public void ContinuousAf(Objective obj)
         {
-            // double currentPos = FocusAxis.GetPosition(Units.Length_Micrometres);
+            // double currentPos = _focusAxis.GetPosition(Units.Length_Micrometres); // FIXME: This line had no effect.
             ATF.ATF_Make0();
             ATF.ATF_LaserTrackOn();
 
@@ -111,7 +104,8 @@ namespace MicroscopeLaserAF
             var watch = new Stopwatch();
             while (true)
             {
-                // var encoderPos = FocusAxis.Settings.Get(SettingConstants.EncoderPos, unit: Units.Length_Micrometres);
+                // FIXME: This line had no effect.
+                // var encoderPos = _focusAxis.Settings.Get(SettingConstants.EncoderPos, unit: Units.Length_Micrometres);
                 var ecode = ATF.ATF_ReadPosition(out _);
                 if (ecode == 0)
                 {
@@ -119,7 +113,7 @@ namespace MicroscopeLaserAF
                     {
                         // Start the focus move if greater than infocus range.
                         Console.WriteLine(-(float)0 * obj.SlopeInMicrometers);
-                        FocusAxis.MoveRelative(-(float)0 * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
+                        _focusAxis.MoveRelative(-(float)0 * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
                         Thread.Sleep(10);
                     }
                 }
@@ -161,18 +155,18 @@ namespace MicroscopeLaserAF
             float ms = 0;
             Random rand = new Random();
 
-            double pos = FocusAxis.GetPosition(Units.Length_Micrometres);
-            FocusAxis.Device.GenericCommand("trigger 1 disable");
+            double pos = _focusAxis.GetPosition(Units.Length_Micrometres);
+            _focusAxis.Device.GenericCommand("trigger 1 disable");
             for (int i = -100; i < 100; i++)
             {
                 double u1 = 1.0 - rand.NextDouble();
                 double u2 = 1.0 - rand.NextDouble();
                 double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
                 double randNormal = 100 + 50 * randStdNormal;
-                FocusAxis.MoveAbsolute(pos, Units.Length_Micrometres);
-                FocusAxis.MoveRelative(Math.Sign(i) * randNormal, Units.Length_Micrometres); // +-100um focus moves
+                _focusAxis.MoveAbsolute(pos, Units.Length_Micrometres);
+                _focusAxis.MoveRelative(Math.Sign(i) * randNormal, Units.Length_Micrometres); // +-100um focus moves
                 ms += FastAF(obj);
-                // var error = FocusAxis.GetPosition(Units.Length_Micrometres) - pos;
+                // var error = _focusAxis.GetPosition(Units.Length_Micrometres) - pos; // FIXME: This line had no effect.
             }
 
             Console.WriteLine($"Avg time: {ms / 200} ms");
@@ -185,16 +179,17 @@ namespace MicroscopeLaserAF
             timer.Start();
             int stageLatency = 9; // Stage latency in ms
             int sensorLatency = 3; // Sensor polling latency, ms
-            // double pos = FocusAxis.GetPosition(Units.Length_Micrometres); // Where we are at right now
+            // FIXME: This line had no effect.
+            // double pos = _focusAxis.GetPosition(Units.Length_Micrometres); // Where we are at right now
 
             ATF.ATF_ReadPosition(out float fpos);
-            // float distToFocus = -fpos * obj.SlopeInMicrometers;
+            // float distToFocus = -fpos * obj.SlopeInMicrometers;  // FIXME: This line had no effect.
 
             if (Math.Abs(fpos) > obj.SensorRange) // We are outside the distance measurment range
             {
                 double approachSpeed = (obj.SensorRange * obj.SlopeInMicrometers) / (sensorLatency + stageLatency); // Speed that would exceed linear range before we read another point.
 
-                FocusAxis.MoveVelocity(Math.Sign(-fpos) * approachSpeed, Units.Velocity_MillimetresPerSecond);
+                _focusAxis.MoveVelocity(Math.Sign(-fpos) * approachSpeed, Units.Velocity_MillimetresPerSecond);
 
                 // We are outside the linear range of the sensor, proceed while polling the sensor
                 while ((Math.Abs(fpos) > 0.9 * obj.SensorRange))
@@ -202,14 +197,14 @@ namespace MicroscopeLaserAF
                     ATF.ATF_ReadPosition(out fpos);
                 }
 
-                FocusAxis.Stop();
+                _focusAxis.Stop();
             }
 
             while (Math.Abs(fpos) > obj.InFocusRange) // Do move rels until we converge
             {
                 ATF.ATF_ReadPosition(out fpos);
                 var distToFocus = -fpos * obj.SlopeInMicrometers;
-                FocusAxis.MoveRelative(distToFocus, Units.Length_Micrometres);
+                _focusAxis.MoveRelative(distToFocus, Units.Length_Micrometres);
             }
 
             timer.Stop();
@@ -228,7 +223,7 @@ namespace MicroscopeLaserAF
             if (Math.Abs(fpos) < obj.LinearFocusRange)
             {
                 float distToFocus = -fpos * obj.SlopeInMicrometers;
-                FocusAxis.MoveRelative(distToFocus, Units.Length_Micrometres);
+                _focusAxis.MoveRelative(distToFocus, Units.Length_Micrometres);
             }
             else if (Math.Abs(fpos) < obj.InFocusRange)
             {
@@ -236,22 +231,21 @@ namespace MicroscopeLaserAF
             }
             else if (Math.Abs(fpos) > obj.LinearFocusRange)
             {
-                var trigger = FocusAxis.Device.Triggers.GetTrigger(1);
+                var trigger = _focusAxis.Device.Triggers.GetTrigger(1);
                 trigger.Enable(1); // Enable for only 1 trigger which saves having to disable later
-                double avoidOvershoot = (1.9 * obj.LinearFocusRange * obj.SlopeInMicrometers) / IOPeriod; //Speed that would exceed 2* inFocus range before the IO catches it.
-                FocusAxis.MoveVelocity(Math.Sign(-fpos) * avoidOvershoot, Units.Velocity_MillimetresPerSecond);
-                FocusAxis.WaitUntilIdle();
-                double encoderPos = FocusAxis.Device.Settings.Get("user.vdata.0");
+                double avoidOvershoot = (1.9 * obj.LinearFocusRange * obj.SlopeInMicrometers) / IOPeriod; // Speed that would exceed 2* inFocus range before the IO catches it.
+                _focusAxis.MoveVelocity(Math.Sign(-fpos) * avoidOvershoot, Units.Velocity_MillimetresPerSecond);
+                _focusAxis.WaitUntilIdle();
 
+                double encoderPos = _focusAxis.Device.Settings.Get("user.vdata.0");
                 // Alternatively we can poll user.vdata to avoid waiting for settle, is slower EXECPT on USB MCC
-                /* double encoderPos = 0;
-                while (encoderPos == 0){
-                    encoderPos = FocusAxis.Device.Settings.Get("user.vdata.0");
-                }
-                */
+                // double encoderPos = 0;
+                // while (encoderPos == 0){
+                //     encoderPos = _focusAxis.Device.Settings.Get("user.vdata.0");
+                // }
 
-                FocusAxis.MoveAbsolute(encoderPos);
-                // FocusAxis.Device.Settings.Set("user.vdata.0", 0); Need to reset if polling user.vdata.
+                _focusAxis.MoveAbsolute(encoderPos);
+                // _focusAxis.Device.Settings.Set("user.vdata.0", 0); Need to reset if polling user.vdata.
                 for (int i = 0; i < 3; i++)
                 {
                     ATF.ATF_ReadPosition(out fpos);
@@ -261,13 +255,18 @@ namespace MicroscopeLaserAF
                     }
 
                     Console.WriteLine("Correction step {0}, distance {1}um", i, -fpos * obj.SlopeInMicrometers);
-                    FocusAxis.MoveRelative(-fpos * obj.SlopeInMicrometers, Units.Length_Micrometres);
+                    _focusAxis.MoveRelative(-fpos * obj.SlopeInMicrometers, Units.Length_Micrometres);
                 }
             }
             
             timer.Stop();
             return timer.ElapsedMilliseconds;
         }
+
+
+        private Axis _focusAxis;
+        private Axis _xAxis; // FIXME: Unused except by commented-out code; remove if actually not needed.
+        private ObjectiveChanger _objectiveChanger; // FIXME: Unused except by commented-out code; remove if actually not needed.
     }
 }
 

@@ -11,49 +11,50 @@ namespace MicroscopeLaserAF
 {
     public class Objective
     {
-        public Objective(short index)
+        public Objective(short initialObjectiveNumber)
         {
-            _index = index;
+            _index = initialObjectiveNumber;
         }
 
         public int InFocusRange => _inFocusRange;
 
         public float SlopeInMicrometers { get => _slopeInMicrometers; private set => _slopeInMicrometers = value; }
 
-
         public int SensorRange => _sensorRange;
 
         public int LinearFocusRange => _linearFocusRange;
 
-        public void MeasureFocus(Axis focus)
+        public void MeasureFocus(Axis focusAxis)
         {
-            double pos = focus.GetPosition(Units.Length_Millimetres);
+            double pos = focusAxis.GetPosition(Units.Length_Millimetres);
             if (pos < 18 || pos > 21)
             {
-                focus.MoveAbsolute(13, Units.Length_Millimetres); // Move to starting position
+                // FIXME: 13 is outside the range 18-21. Possible bug?
+                focusAxis.MoveAbsolute(13, Units.Length_Millimetres); // Move to starting position
             }
 
-            focus.Device.Triggers.GetTrigger(1).Enable();
-            focus.MoveVelocity(1, Units.Velocity_MillimetresPerSecond); // Move until we hit approx focus
+            focusAxis.Device.Triggers.GetTrigger(1).Enable();
+            focusAxis.MoveVelocity(1, Units.Velocity_MillimetresPerSecond); // Move until we hit approx focus
 
             // We could implement image-vbased AF here if we wanted to
             Console.WriteLine("Move the stage to best focus position and then press any key");
             Console.ReadKey();
 
             ATF.ATF_Make0();
-            _focusOffset = focus.GetPosition(Units.Length_Micrometres);
+            // _focusOffset = focusAxis.GetPosition(Units.Length_Micrometres); // FIXME: This line had no effect.
             return;
         }
 
-        public bool SetAll(int obj)
+        public bool SetAll(int objectiveNumber)
         {
-            _index = (short)obj;
+            _index = (short)objectiveNumber;
             int ecode = 0;
-            ecode += ATF.ATF_ReadMagnification(obj, out _mag);
-            ecode += ATF.ATF_ReadInfocusRange(obj, out _inFocusRange);
-            ecode += ATF.ATF_ReadSlopeUmPerOut(obj, out _slopeInMicrometers);
-            ecode += ATF.ATF_ReadInfocusRange(obj, out _linearFocusRange);
-            ecode += ATF.ATF_ReadLinearRange(obj, out _sensorRange);
+            ecode += ATF.ATF_ReadMagnification(objectiveNumber, out _mag);
+            ecode += ATF.ATF_ReadInfocusRange(objectiveNumber, out _inFocusRange);
+            ecode += ATF.ATF_ReadSlopeUmPerOut(objectiveNumber, out _slopeInMicrometers);
+            // FIXME: _linearFocusRange always has the same value as _inFocusRange. Can probably be removed.
+            ecode += ATF.ATF_ReadInfocusRange(objectiveNumber, out _linearFocusRange);
+            ecode += ATF.ATF_ReadLinearRange(objectiveNumber, out _sensorRange);
             return (ecode == 0); // No errors
         }
 
@@ -100,11 +101,11 @@ namespace MicroscopeLaserAF
 
 
         private short _index;
-        private short _mag;
+        private short _mag; // FIXME: This variable is only written to. Does reading it from the device have a side effect?
         private float _slopeInMicrometers;
         private int _sensorRange;
         private int _inFocusRange;
         private int _linearFocusRange;
-        private double _focusOffset = 0;
+        // private double _focusOffset; // FIXME: This variable was only written to, never read.
     }
 }
