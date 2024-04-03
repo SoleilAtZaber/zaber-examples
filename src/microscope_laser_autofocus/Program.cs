@@ -13,6 +13,11 @@ namespace MicroscopeLaserAF
 {
     internal class Program
     {
+        // Change these constants to match your hardware configuration.
+        static readonly string ZABER_PORT = "COM4";
+        static readonly string ATF_PORT_OR_IP = "169.254.64.162";
+        static readonly int ATF_SPEED = 27;
+
         static void Main()
         {
             Program test = new Program();
@@ -22,25 +27,28 @@ namespace MicroscopeLaserAF
         public void TestAutofocus()
         {
             var curObjective = new Objective(0);
-            using (var connection = Connection.OpenSerialPort("COM4"))
+            using (var connection = Connection.OpenSerialPort(ZABER_PORT))
             {
                 connection.EnableAlerts();
 
                 var deviceList = connection.DetectDevices();
-                Device LDA = deviceList[1];
-                _focusAxis = LDA.GetAxis(1);
-                // FIXME: Lots of commented-out code in this file; delete it or if users are supposed to uncomment it, document when.
-                // var stage = deviceList[4];
-                // _xAxis = stage.GetAxis(1);
-                // _objectiveChanger = ObjectiveChanger.Find(connection);
+                var microscope = Microscope.Find(connection);
+                if (microscope.FocusAxis == null)
+                {
+                    Console.WriteLine("Error: Could not identify microscope focus axis. Please use the Zaber Launcher microscope app to configure it.");
+                    return;
+                }
 
-                int ecode;
+                _focusAxis = microscope.FocusAxis;
+                // FIXME: Lots of commented-out code in this file; delete it or if users are supposed to uncomment it, document when.
+                // _xAxis = microscope.XAxis;
+                // _objectiveChanger = microscope.ObjectiveChanger;
 
                 // Open TCP/IP connection to sensor
-                ecode = ATF.ATF_OpenConnection("169.254.64.162", 27);
+                ATF.ATF_OpenConnection(ATF_PORT_OR_IP, ATF_SPEED);
                 Console.WriteLine("Connection Ack:" + ATF.ATF_PingAck());
-                // Test all the various AF modes
 
+                // Test all the various AF modes
 
                 // Move to default focus
                 if (!_focusAxis.IsHomed())
@@ -52,13 +60,15 @@ namespace MicroscopeLaserAF
                 ATF.ATF_DisableAutoOff();
                 ATF.ATF_EnableLaser();
                 ATF.ATF_LaserTrackOn();
-                var trigger = LDA.Triggers.GetTrigger(1);
-                trigger.OnFireSetToSetting(TriggerAction.A, 0, "user.vdata.0", TriggerOperation.SetTo, 1, "encoder.pos");
+
+                // Configure Zaber focus stage to stop moving when the AF signal is received from the sensor.
+                var trigger = _focusAxis.Device.Triggers.GetTrigger(1);
+                trigger.OnFireSetToSetting(TriggerAction.A, 0, TEMP_STORAGE_SETTING, TriggerOperation.SetTo, 1, "encoder.pos");
                 trigger.OnFire(TriggerAction.B, 0, "stop");
                 trigger.FireWhenIo(IoPortType.DigitalInput, 1, TriggerCondition.EQ, 1);
                 // FIXME: Document when users should uncomment this line.
                 // TestRefreshRate(); // See how fast the sensor can be updated
-                ChangeObjectives(1, ref curObjective);
+                ChangeObjectives(1, curObjective);
 
                 // Set the focus point for the currentObjective
                 curObjective.MeasureFocus(_focusAxis);
@@ -79,10 +89,11 @@ namespace MicroscopeLaserAF
             }
         }
 
-        public bool ChangeObjectives(int objectiveNumber, ref Objective current)
+        public bool ChangeObjectives(int objectiveNumber, Objective current)
         {
             Console.WriteLine("Manually change to:" + objectiveNumber);
             Console.ReadKey();
+            // FIXME: Why is this commented out?
             // _objectiveChanger.Change(obj);
 
             if (ATF.ATF_WriteObjNum(objectiveNumber) == 0)
@@ -109,9 +120,11 @@ namespace MicroscopeLaserAF
                 var ecode = ATF.ATF_ReadPosition(out _);
                 if (ecode == 0)
                 {
+                    // FIXME: This weird expression for 0 makes me think this was a temporary change.
                     if (Math.Abs((float)0) > obj.InFocusRange)
                     {
                         // Start the focus move if greater than infocus range.
+                        // FIXME: These multiplications by zero seem weird.
                         Console.WriteLine(-(float)0 * obj.SlopeInMicrometers);
                         _focusAxis.MoveRelative(-(float)0 * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
                         Thread.Sleep(10);
@@ -136,13 +149,14 @@ namespace MicroscopeLaserAF
             }
         }
 
+        // FIXME: Function is not used unless some code is commented out. Delete if not needed.
         public long TestRefreshRate()
         {
             var watch = new Stopwatch();
             watch.Start();
             for (int i = 0; i < 1000; i++)
             {
-                ATF.ATF_ReadPosition(out float fpos);
+                ATF.ATF_ReadPosition(out _);
             }
 
             watch.Stop();
@@ -156,7 +170,7 @@ namespace MicroscopeLaserAF
             Random rand = new Random();
 
             double pos = _focusAxis.GetPosition(Units.Length_Micrometres);
-            _focusAxis.Device.GenericCommand("trigger 1 disable");
+            _focusAxis.Device.Triggers.GetTrigger(1).Disable();
             for (int i = -100; i < 100; i++)
             {
                 double u1 = 1.0 - rand.NextDouble();
@@ -173,6 +187,7 @@ namespace MicroscopeLaserAF
             return ms / 100;
         }
 
+        // FIXME: Function is not used anywhere. Delete if not needed.
         public float SW_AF(Objective obj)
         {
             var timer = new Stopwatch();
@@ -231,21 +246,20 @@ namespace MicroscopeLaserAF
             }
             else if (Math.Abs(fpos) > obj.LinearFocusRange)
             {
-                var trigger = _focusAxis.Device.Triggers.GetTrigger(1);
-                trigger.Enable(1); // Enable for only 1 trigger which saves having to disable later
+                _focusAxis.Device.Triggers.GetTrigger(1).Enable(1); // Enable for only 1 trigger which saves having to disable later
                 double avoidOvershoot = (1.9 * obj.LinearFocusRange * obj.SlopeInMicrometers) / IOPeriod; // Speed that would exceed 2* inFocus range before the IO catches it.
                 _focusAxis.MoveVelocity(Math.Sign(-fpos) * avoidOvershoot, Units.Velocity_MillimetresPerSecond);
                 _focusAxis.WaitUntilIdle();
 
-                double encoderPos = _focusAxis.Device.Settings.Get("user.vdata.0");
+                double encoderPos = _focusAxis.Device.Settings.Get(TEMP_STORAGE_SETTING);
                 // Alternatively we can poll user.vdata to avoid waiting for settle, is slower EXECPT on USB MCC
                 // double encoderPos = 0;
                 // while (encoderPos == 0){
-                //     encoderPos = _focusAxis.Device.Settings.Get("user.vdata.0");
+                //     encoderPos = _focusAxis.Device.Settings.Get(TEMP_STORAGE_SETTING);
                 // }
 
                 _focusAxis.MoveAbsolute(encoderPos);
-                // _focusAxis.Device.Settings.Set("user.vdata.0", 0); Need to reset if polling user.vdata.
+                // _focusAxis.Device.Settings.Set(TEMP_STORAGE_SETTING, 0); Need to reset if polling user.vdata.
                 for (int i = 0; i < 3; i++)
                 {
                     ATF.ATF_ReadPosition(out fpos);
@@ -264,9 +278,12 @@ namespace MicroscopeLaserAF
         }
 
 
+        // Change this if you're using the user.vdata.0 setting for something else in your application.
+        private static readonly string TEMP_STORAGE_SETTING = "user.vdata.0";
+
         private Axis _focusAxis;
-        private Axis _xAxis; // FIXME: Unused except by commented-out code; remove if actually not needed.
-        private ObjectiveChanger _objectiveChanger; // FIXME: Unused except by commented-out code; remove if actually not needed.
+        // private Axis _xAxis; // FIXME: Unused except by commented-out code; remove if actually not needed.
+        // private ObjectiveChanger _objectiveChanger; // FIXME: Unused except by commented-out code; remove if actually not needed.
     }
 }
 
