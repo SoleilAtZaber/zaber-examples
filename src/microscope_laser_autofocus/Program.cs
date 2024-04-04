@@ -117,16 +117,14 @@ namespace MicroscopeLaserAF
             {
                 // FIXME: This line had no effect.
                 // var encoderPos = _focusAxis.Settings.Get(SettingConstants.EncoderPos, unit: Units.Length_Micrometres);
-                var ecode = ATF.ATF_ReadPosition(out _);
+                var ecode = ATF.ATF_ReadPosition(out var fpos);
                 if (ecode == 0)
                 {
-                    // FIXME: This weird expression for 0 makes me think this was a temporary change.
-                    if (Math.Abs((float)0) > obj.InFocusRange)
+                    if (Math.Abs(fpos) > obj.InFocusRange)
                     {
                         // Start the focus move if greater than infocus range.
-                        // FIXME: These multiplications by zero seem weird.
-                        Console.WriteLine(-(float)0 * obj.SlopeInMicrometers);
-                        _focusAxis.MoveRelative(-(float)0 * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
+                        Console.WriteLine(-fpos * obj.SlopeInMicrometers);
+                        _focusAxis.MoveRelative(-fpos * obj.SlopeInMicrometers, Units.Length_Micrometres); // Do absolute moves here so that behaviour is defined, continue polling in motion                                                                                      //A sequence of move rels will change depend on the pos when the command was recieved                                                                                  
                         Thread.Sleep(10);
                     }
                 }
