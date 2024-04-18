@@ -121,7 +121,7 @@ namespace MicroscopeLaserAF
         var ecode = ATF.ATF_ReadPosition(out var fpos);
         if (ecode == 0)
         {
-                if (Math.Abs(fpos) > 0.8 * obj.SensorRange)
+                if (Math.Abs(fpos) > 0.8 * obj.SensorRange || fpos==0)
                 {
                     Console.WriteLine("Focus error is excessive, running search");
                     AFOnce(obj);
