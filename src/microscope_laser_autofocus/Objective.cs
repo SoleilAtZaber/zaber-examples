@@ -22,8 +22,6 @@ namespace MicroscopeLaserAF
 
         public int SensorRange => _sensorRange;
 
-        public int LinearFocusRange => _linearFocusRange;
-
         public void SetFocus(Axis focusAxis)
         {
             ATF.ATF_Make0();
@@ -86,6 +84,5 @@ namespace MicroscopeLaserAF
         private float _slopeInMicrometers;
         private int _sensorRange;
         private int _inFocusRange;
-        private int _linearFocusRange;
     }
 }
