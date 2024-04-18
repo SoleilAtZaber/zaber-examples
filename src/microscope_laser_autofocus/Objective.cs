@@ -25,7 +25,7 @@ namespace MicroscopeLaserAF
         public void SetFocus(Axis focusAxis)
         {
             ATF.ATF_Make0();
-            // _focusOffset = focusAxis.GetPosition(Units.Length_Micrometres); // FIXME: This line had no effect.
+            Console.WriteLine("Current focus position: {0} µm", focusAxis.GetPosition(Units.Length_Micrometres));
             return;
         }
 
@@ -33,7 +33,6 @@ namespace MicroscopeLaserAF
         {
             _index = (short)objectiveNumber;
             int ecode = 0;
-            ecode += ATF.ATF_ReadMagnification(objectiveNumber, out _mag);
             ecode += ATF.ATF_ReadInfocusRange(objectiveNumber, out _inFocusRange);
             ecode += ATF.ATF_ReadSlopeUmPerOut(objectiveNumber, out _slopeInMicrometers);
             ecode += ATF.ATF_ReadLinearRange(objectiveNumber, out _sensorRange);
@@ -47,8 +46,7 @@ namespace MicroscopeLaserAF
             ATF.ATF_Make0();
             double pos = focus.GetPosition(Units.Length_Micrometres);
             double delta = InFocusRange * SlopeInMicrometers * 0.2;
-            List<float> slopes = new List<float>();
-            List<double> positions = new List<double>();
+            List<float> slopes = new();
             focus.MoveAbsolute(pos - 2 * InFocusRange * SlopeInMicrometers, Units.Length_Micrometres);
             for (int i = 1; i < 20; i++)
             {
@@ -80,7 +78,6 @@ namespace MicroscopeLaserAF
 
 
         private short _index;
-        private short _mag; // FIXME: This variable is only written to. Does reading it from the device have a side effect?
         private float _slopeInMicrometers;
         private int _sensorRange;
         private int _inFocusRange;
