@@ -63,7 +63,7 @@ namespace MicroscopeLaserAF
 
             float avgSlope = slopes.Average();
             Console.WriteLine("New average: {0} Current slope: {1} um/DN", avgSlope, SlopeInMicrometers);
-            Console.WriteLine("Press y to overwrite with new measured slope");
+            Console.WriteLine("Enter y to overwrite with new measured slope");
             string res = Console.ReadLine();
 
             if (res == "y")

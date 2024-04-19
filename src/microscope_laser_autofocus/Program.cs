@@ -21,7 +21,6 @@ namespace MicroscopeLaserAF
 
         static void Main()
         {
-            Library.SetDeviceDbSource(DeviceDbSourceType.WebService, "https://api.zaber.io/device-db/master");
             Program test = new Program();
             test.TestAutofocus();
         }

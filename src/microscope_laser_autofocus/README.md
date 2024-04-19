@@ -4,13 +4,11 @@
 
 ## Dependencies
 
-FIXME: Talk about the hardware setup here.
+This example code requires a Zaber MKR025B with a MJB25C-785 coupling filter and a WDI PFA-DT-785 
+laser autofocus sensor. Before using this example, the sensor must be properly aligned according 
+to the PFA user manual. Currently this autofocus has been tested on wellplates and slide substrates.
 
 ## Wise Device SDK
-
-FIXME: Since the ATF SDK is behind an identity wall and the documentation says nothing about its
-license, we probably can't include their DLLs in the example. Describe here how to get acccess
-to the SDK, and users will have to follow the instructions below:
 
 Once you have downloaded the `ATF_LIB` zip file, extract it to a temporary location and copy all the
 `atf_lib*.*` files and the `atf_net.dll` file from the `Package\VS2019\bin\x64` directory to the
@@ -27,7 +25,10 @@ Look at the constants at the top of the `Program.cs` source file and make sure t
 hardware configuration. You will most likely have to change the values of the `ZABER_PORT` and
 `ATF_PORT_OR_IP` constants. Save the file after making any changes.
 
-FIXME: If the users are supposed to modify the commented-out code, explain how and why here.
+On the first run, it is necessary to uncomment the Objective.MeasureSlope() line and 
+manually focus the microscope using Zaber Launcher microscope app or a joystick. 
+Once slope measurement has been completed for each objective you wish to use, 
+you may comment out this line.
 
 Finally, compile the example by pressing `CTRL-SHIFT-B` and run it by pressing `F5`.
 
