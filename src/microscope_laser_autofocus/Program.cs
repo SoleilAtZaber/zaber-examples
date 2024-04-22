@@ -1,11 +1,11 @@
-using Zaber.Motion;
 using System;
-using System.Timers;
+using System.Threading;
+
 using WDI;
 
+using Zaber.Motion;
 using Zaber.Motion.Ascii;
 using Zaber.Motion.Microscopy;
-using System.Threading;
 
 //NOTE: Zaber Launcher MUST BE OPEN before launching either this script or MicroManager. This allows multiple programs to access the serial port concurrently
 
@@ -116,10 +116,10 @@ namespace MicroscopeLaserAF
         /// Event handler for the periodic autofocus Elapsed event.
         /// </summary>
         private static void Tracking(Objective obj)
-    {
-        var ecode = ATF.ATF_ReadPosition(out var fpos);
-        if (ecode == 0)
         {
+            var ecode = ATF.ATF_ReadPosition(out var fpos);
+            if (ecode == 0)
+            {
                 if (Math.Abs(fpos) > 0.8 * obj.SensorRange || fpos==0)
                 {
                     Console.WriteLine("Focus error is excessive, running search");
@@ -139,8 +139,8 @@ namespace MicroscopeLaserAF
                         }
                     }
                 }
+            }
         }
-    }
 
         /// <summary>
         /// Moves to a known minimum position and the searches upwards for the first surface to focus on.
