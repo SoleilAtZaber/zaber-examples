@@ -4,8 +4,8 @@
 
 ## Dependencies
 
-This example code requires a Zaber MKR025B with a MJB25C-785 coupling filter and a WDI PFA-DT-785 
-laser autofocus sensor. Before using this example, the sensor must be properly aligned according 
+This example code requires a Zaber MKR025B with a MJB25C-785 coupling filter and a WDI PFA-DT-785
+laser autofocus sensor. Before using this example, the sensor must be properly aligned according
 to the PFA user manual. Currently this autofocus has been tested on wellplates and slide substrates.
 
 ## Wise Device SDK
@@ -25,10 +25,13 @@ Look at the constants at the top of the `Program.cs` source file and make sure t
 hardware configuration. You will most likely have to change the values of the `ZABER_PORT` and
 `ATF_PORT_OR_IP` constants. Save the file after making any changes.
 
-On the first run, it is necessary to uncomment the Objective.MeasureSlope() line and 
-manually focus the microscope using Zaber Launcher microscope app or a joystick. 
-Once slope measurement has been completed for each objective you wish to use, 
+On the first run, it is necessary to uncomment the Objective.MeasureSlope() line and
+manually focus the microscope using Zaber Launcher microscope app or a joystick.
+Once slope measurement has been completed for each objective you wish to use,
 you may comment out this line.
+
+Always ensure you have Zaber Launcher running before starting this example code or Micro-Manager.
+Zaber Launcher provides port sharing capability that enables both to work at once.
 
 Finally, compile the example by pressing `CTRL-SHIFT-B` and run it by pressing `F5`.
 
